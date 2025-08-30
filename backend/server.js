@@ -18,6 +18,10 @@ app.use(express.json({ extended: false }));
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/profile', require('./routes/profileRoutes'));
 app.use('/api/resumes', require('./routes/resumeRoutes'));
+app.use('/api/tpo', require('./routes/tpoRoutes'));
+app.use('/api/announcements', require('./routes/announcementRoutes'));
+app.use('/api/company', require('./routes/companyRoutes'));
+app.use('/api/offers', require('./routes/offerRoutes'));
 
 app.get('/', (req, res) => {
   res.send('Placement Tracker API is running...');

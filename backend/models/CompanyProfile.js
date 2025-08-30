@@ -13,6 +13,18 @@ const CompanyProfileSchema = new Schema({
   },
   website: String,
   description: String,
+  industry: String,
+  location: String,
+  companySize: String,
+  establishedYear: Number,
+  logo: String,
+  socialMedia: {
+    linkedin: String,
+    twitter: String,
+    facebook: String
+  }
+}, {
+  timestamps: true
 });
 
 module.exports = mongoose.model('CompanyProfile', CompanyProfileSchema);
