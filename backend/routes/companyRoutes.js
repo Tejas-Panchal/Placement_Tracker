@@ -13,7 +13,8 @@ const {
   searchStudents,
   getStudentById,
   updateHrInfo,
-  getDashboardStats
+  getDashboardStats,
+  filterJobs
 } = require('../controllers/companyController');
 
 // Middleware for company routes
@@ -22,6 +23,7 @@ const companyAuth = [authMiddleware, roleMiddleware('company')];
 // Job posting routes
 router.post('/jobs', companyAuth, createJob);
 router.get('/jobs', companyAuth, getMyJobs);
+router.get('/jobs/filter', companyAuth, filterJobs);
 router.put('/jobs/:jobId', companyAuth, updateJob);
 router.delete('/jobs/:jobId', companyAuth, deleteJob);
 

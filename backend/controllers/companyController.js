@@ -69,6 +69,122 @@ exports.getMyJobs = async (req, res) => {
   }
 };
 
+// Filter and search jobs posted by the company
+exports.filterJobs = async (req, res) => {
+  try {
+    const companyProfile = await CompanyProfile.findOne({ user: req.user.id });
+    if (!companyProfile) {
+      return res.status(404).json({ msg: 'Company profile not found' });
+    }
+
+    const {
+      jobType,
+      location,
+      minCTC,
+      maxCTC,
+      fromDate,
+      toDate,
+      sort = 'createdAt',
+      order = 'desc',
+      limit = 10,
+      page = 1
+    } = req.query;
+
+    const query = { company: companyProfile._id };
+
+    if (status && ['Open', 'Closed', 'Filled', 'Cancelled'].includes(status)) {
+      query.status = status;
+    }
+
+    if (jobType) {
+      query.jobType = jobType;
+    }
+
+    if (location) {
+      query.location = { $regex: new RegExp(location, 'i') };
+    }
+
+    if (minCTC || maxCTC) {
+      query['package.totalCTC'] = {};
+      if (minCTC) query['package.totalCTC'].$gte = parseInt(minCTC);
+      if (maxCTC) query['package.totalCTC'].$lte = parseInt(maxCTC);
+    }
+
+    if (fromDate || toDate) {
+      query.applicationDeadline = {};
+      if (fromDate) query.applicationDeadline.$gte = new Date(fromDate);
+      if (toDate) query.applicationDeadline.$lte = new Date(toDate);
+    }
+
+    let sortOptions = {};
+    const validSortFields = ['createdAt', 'applicationDeadline', 'title', 'positions', 'package.totalCTC', 'status'];
+    
+    if (validSortFields.includes(sort)) {
+      sortOptions[sort] = order === 'asc' ? 1 : -1;
+    } else {
+      sortOptions.createdAt = -1;
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const totalJobs = await Job.countDocuments(query);
+
+    const jobs = await Job.find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate({
+        path: 'company',
+        select: 'companyName'
+      });
+
+    const jobsWithStats = await Promise.all(jobs.map(async job => {
+      const applicationCounts = await StudentProfile.aggregate([
+        { $unwind: '$appliedJobs' },
+        { $match: { 'appliedJobs.job': job._id } },
+        { $group: { 
+          _id: '$appliedJobs.status',
+          count: { $sum: 1 }
+        }}
+      ]);
+
+      const applicationStats = {
+        total: 0,
+        Applied: 0,
+        Shortlisted: 0,
+        Interviewed: 0,
+        Rejected: 0,
+        Offered: 0
+      };
+
+      applicationCounts.forEach(item => {
+        if (item._id) {
+          applicationStats[item._id] = item.count;
+          applicationStats.total += item.count;
+        }
+      });
+
+      const jobObject = job.toObject();
+      jobObject.applicationStats = applicationStats;
+      
+      return jobObject;
+    }));
+
+    res.json({
+      jobs: jobsWithStats,
+      pagination: {
+        totalJobs,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(totalJobs / parseInt(limit))
+      }
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
 // Update a job posting
 exports.updateJob = async (req, res) => {
   try {
