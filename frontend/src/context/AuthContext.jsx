@@ -1,6 +1,7 @@
 // 1. Import 'useCallback' from React
 import React, { createContext, useReducer, useContext, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import api from '../utils/api';
 
 // Helper function (no changes)
 const setAuthToken = (token) => {
