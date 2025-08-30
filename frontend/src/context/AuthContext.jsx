@@ -1,5 +1,6 @@
 import React, { createContext, useReducer, useContext, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import api from '../utils/api';
 import { jwtDecode } from 'jwt-decode'; // You need this library: npm install jwt-decode
 
 // Helper function (no changes)
