@@ -49,16 +49,29 @@ export const JobsProvider = ({ children }) => {
   const fetchData = useCallback(async () => {
     dispatch({ type: 'FETCH_REQUEST' });
     try {
+      console.log('Fetching jobs and applications data...');
       const [jobsRes, myAppsRes] = await Promise.all([
         api.get('/api/profile/jobs'), 
         api.get('/api/profile/me'), 
       ]);
+      
+      console.log('Jobs data received:', jobsRes.data);
+      console.log('Profile data received:', myAppsRes.data);
+      
+      const jobsData = Array.isArray(jobsRes.data) ? jobsRes.data : (jobsRes.data?.jobs || []);
+      const applicationsData = Array.isArray(myAppsRes.data?.applications) ? 
+        myAppsRes.data.applications : [];
+        
       dispatch({
         type: 'FETCH_SUCCESS',
-        payload: { jobs: jobsRes.data, myApplications: myAppsRes.data },
+        payload: { 
+          jobs: jobsData, 
+          myApplications: applicationsData 
+        },
       });
     } catch (err) {
-      dispatch({ type: 'FETCH_FAILURE', payload: 'Failed to fetch job data.' });
+      console.error('Error fetching job data:', err);
+      dispatch({ type: 'FETCH_FAILURE', payload: 'Failed to fetch job data: ' + (err.message || err) });
     }
   }, []);
 
@@ -78,7 +91,7 @@ export const JobsProvider = ({ children }) => {
       
       const matchesSearch = !state.filters.search || 
         job.title?.toLowerCase().includes(state.filters.search.toLowerCase()) ||
-        job.company?.toLowerCase().includes(state.filters.search.toLowerCase()) ||
+        job.company?.companyName?.toLowerCase().includes(state.filters.search.toLowerCase()) ||
         job.description?.toLowerCase().includes(state.filters.search.toLowerCase());
 
       const matchesDomain = !state.filters.domain || 
@@ -88,7 +101,13 @@ export const JobsProvider = ({ children }) => {
         job.location?.toLowerCase().includes(state.filters.location.toLowerCase());
 
       const matchesPackage = !state.filters.packageRange || (() => {
-        if (!state.filters.packageRange.includes('-')) return true;
+        if (!state.filters.packageRange.includes('-')) {
+          if (state.filters.packageRange === '20+') {
+            const jobPackage = Number(job.package?.baseSalary) || 0;
+            return jobPackage >= 20;
+          }
+          return true;
+        }
         const [min, max] = state.filters.packageRange.split('-').map(Number);
         const jobPackage = Number(job.package?.baseSalary) || 0;
         return (!min || jobPackage >= min) && (!max || jobPackage <= max);
