@@ -119,7 +119,7 @@ exports.deleteResume = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized to delete this resume' });
         }
         
-        await resume.remove();
+        await Resume.deleteOne({ _id: resume._id });
         
         res.json({ message: 'Resume deleted' });
     } catch (error) {

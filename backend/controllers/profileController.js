@@ -1,9 +1,18 @@
 const StudentProfile = require('../models/StudentProfile');
+const CompanyProfile = require('../models/CompanyProfile');
 
-// Get the logged-in student's profile
+// Get the logged-in user's profile
 exports.getMyProfile = async (req, res) => {
   try {
-    const profile = await StudentProfile.findOne({ user: req.user.id }).populate('user', ['name', 'email']);
+    let profile;
+    
+    if (req.user.role === 'student') {
+      profile = await StudentProfile.findOne({ user: req.user.id }).populate('user', ['name', 'email']);
+    } else if (req.user.role === 'company') {
+      profile = await CompanyProfile.findOne({ user: req.user.id }).populate('user', ['name', 'email']);
+    } else {
+      return res.status(400).json({ msg: 'Invalid user role' });
+    }
 
     if (!profile) {
       return res.status(404).json({ msg: 'Profile not found' });
@@ -15,22 +24,42 @@ exports.getMyProfile = async (req, res) => {
   }
 };
 
-// Update the logged-in student's profile
+// Update the logged-in user's profile
 exports.updateProfile = async (req, res) => {
-  const { personalInfo, academicDetails, skills, projects, certifications } = req.body;
-
   try {
-    let profile = await StudentProfile.findOne({ user: req.user.id });
+    let profile;
+    
+    if (req.user.role === 'student') {
+      const { personalInfo, academicDetails, skills, projects, certifications } = req.body;
+      
+      profile = await StudentProfile.findOne({ user: req.user.id });
+      
+      if (!profile) {
+        return res.status(404).json({ msg: 'Profile not found' });
+      }
 
-    if (!profile) {
-      return res.status(404).json({ msg: 'Profile not found' });
+      if (personalInfo) profile.personalInfo = personalInfo;
+      if (academicDetails) profile.academicDetails = academicDetails;
+      if (skills) profile.skills = skills;
+      if (projects) profile.projects = projects;
+      if (certifications) profile.certifications = certifications;
+    } 
+    else if (req.user.role === 'company') {
+      const { companyName, website, description } = req.body;
+      
+      profile = await CompanyProfile.findOne({ user: req.user.id });
+      
+      if (!profile) {
+        return res.status(404).json({ msg: 'Profile not found' });
+      }
+
+      if (companyName) profile.companyName = companyName;
+      if (website) profile.website = website;
+      if (description) profile.description = description;
+    } 
+    else {
+      return res.status(400).json({ msg: 'Invalid user role' });
     }
-
-    if (personalInfo) profile.personalInfo = personalInfo;
-    if (academicDetails) profile.academicDetails = academicDetails;
-    if (skills) profile.skills = skills;
-    if (projects) profile.projects = projects;
-    if (certifications) profile.certifications = certifications;
 
     await profile.save();
     res.json(profile);

@@ -1,31 +1,42 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const StudentProfile = require('../models/StudentProfile');
-const CompanyProfile = require('../models/CompanyProfile');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { User, Student, Company, TPO } = require("../models/User");
+const StudentProfile = require("../models/StudentProfile");
+const CompanyProfile = require("../models/CompanyProfile");
 
 // User Registration
 exports.registerUser = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, enrollmentNumber, branch, graduationYear, hrName, contactNumber, instituteName } = req.body;
 
   try {
     let user = await User.findOne({ email });
     if (user) {
-      return res.status(400).json({ msg: 'User already exists' });
+      return res.status(400).json({ msg: "User already exists" });
     }
 
-    user = new User({ name, email, password, role });
+    if (role === "student") {
+        user = new Student({ name, email, password, role, enrollmentNumber, branch, graduationYear });
+    } else if (role === "company") {
+        user = new Company({ name, email, password, role, hrName, contactNumber });
+    } else if (role === "tpo") {
+        user = new TPO({ name, email, password, role, instituteName, contactNumber });
+    } else {
+        return res.status(400).json({ msg: "Invalid user role" });
+    }
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(password, salt);
 
     await user.save();
 
-    if (role === 'student') {
+    if (role === "student") {
       const studentProfile = new StudentProfile({ user: user.id });
       await studentProfile.save();
-    } else if (role === 'company') {
-      const companyProfile = new CompanyProfile({ user: user.id, companyName: 'Default Company Name' });
+    } else if (role === "company") {
+      const companyProfile = new CompanyProfile({
+        user: user.id,
+        companyName: "Default Company Name",
+      });
       await companyProfile.save();
     }
 
@@ -33,7 +44,7 @@ exports.registerUser = async (req, res) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '5h' },
+      { expiresIn: "300000" },
       (err, token) => {
         if (err) throw err;
         res.json({ token });
@@ -41,36 +52,36 @@ exports.registerUser = async (req, res) => {
     );
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server error');
+    res.status(500).send("Server error");
   }
 };
 
 // User Login
 exports.loginUser = async (req, res) => {
-    const { email, password } = req.body;
-    try {
-        let user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ msg: 'Invalid Credentials' });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ msg: 'Invalid Credentials' });
-        }
-
-        const payload = { user: { id: user.id, role: user.role } };
-        jwt.sign(
-            payload,
-            process.env.JWT_SECRET,
-            { expiresIn: '5h' },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token });
-            }
-        );
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+  const { email, password } = req.body;
+  try {
+    let user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ msg: "Invalid Credentials" });
     }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ msg: "Invalid Credentials" });
+    }
+
+    const payload = { user: { id: user.id, role: user.role } };
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: "300000" },
+      (err, token) => {
+        if (err) throw err;
+        res.json({ token });
+      }
+    );
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server error");
+  }
 };

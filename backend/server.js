@@ -1,5 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const cors = require('cors');
 const connectDB = require('./config/db');
 
 dotenv.config();
@@ -9,9 +10,14 @@ connectDB();
 
 const app = express();
 
-app.use(express.json());
+// Middleware
+app.use(cors());
+app.use(express.json({ extended: false }));
+
+// Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/profile', require('./routes/profileRoutes'));
+app.use('/api/resumes', require('./routes/resumeRoutes'));
 
 app.get('/', (req, res) => {
   res.send('Placement Tracker API is running...');
