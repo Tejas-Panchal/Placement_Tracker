@@ -1,7 +1,7 @@
-// 1. Import 'useCallback' from React
 import React, { createContext, useReducer, useContext, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import api from '../utils/api';
+import { jwtDecode } from 'jwt-decode'; // You need this library: npm install jwt-decode
 
 // Helper function (no changes)
 const setAuthToken = (token) => {
@@ -12,26 +12,52 @@ const setAuthToken = (token) => {
   }
 };
 
-// Initial state and Reducer (no changes)
-const initialState = {
-  token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'),
-  isLoading: false,
-  user: null,
-  error: null,
+// --- CHANGE #1: A function to get the initial state from localStorage ---
+const getInitialState = () => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    try {
+      const user = jwtDecode(token);
+      // Optional but recommended: check if token is expired
+      if (user.exp * 1000 < Date.now()) {
+        localStorage.removeItem('token');
+        return { token: null, isAuthenticated: false, user: null, isLoading: false, error: null };
+      }
+      // If token is valid, return the state with user data
+      return { token, isAuthenticated: true, user, isLoading: false, error: null };
+    } catch (error) {
+      // If token is malformed
+      localStorage.removeItem('token');
+    }
+  }
+  // Default state if no token
+  return { token: null, isAuthenticated: false, user: null, isLoading: false, error: null };
 };
+
+const initialState = getInitialState();
 
 const AuthContext = createContext(initialState);
 export const useAuth = () => useContext(AuthContext);
 
+// --- CHANGE #2: Update the reducer to handle the user object ---
 const authReducer = (state, action) => {
-  // ... (this reducer logic is correct, no changes needed)
   switch (action.type) {
     case 'AUTH_REQUEST':
       return { ...state, isLoading: true, error: null };
-    case 'AUTH_SUCCESS':
-      localStorage.setItem('token', action.payload.token);
-      return { ...state, ...action.payload, isAuthenticated: true, isLoading: false, error: null };
+    case 'AUTH_SUCCESS': { // Use block scope for clarity
+      const token = action.payload.token;
+      const user = jwtDecode(token); // Decode the token to get user info
+      console.log('DECODED USER FROM TOKEN:', user);
+      localStorage.setItem('token', token);
+      return {
+        ...state,
+        token: token,
+        user: user, // <-- STORE THE USER OBJECT IN THE STATE
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      };
+    }
     case 'AUTH_FAILURE':
     case 'LOGOUT':
       localStorage.removeItem('token');
@@ -44,15 +70,13 @@ const authReducer = (state, action) => {
 };
 
 
-// Provider Component
+// --- Provider Component (No other changes needed below this line) ---
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
     setAuthToken(state.token);
   }, [state.token]);
-
-  
 
   const register = useCallback(async (formData) => {
     dispatch({ type: 'AUTH_REQUEST' });
@@ -63,8 +87,6 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: 'AUTH_FAILURE', payload: err.response.data.msg || 'Registration failed.' });
     }
   }, []); 
-
-
 
   const login = useCallback(async (formData) => {
     dispatch({ type: 'AUTH_REQUEST' });
@@ -84,7 +106,6 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: 'CLEAR_ERROR' });
   }, []);
 
-  // Now the context value provides stable functions
   const contextValue = { ...state, register, login, logout, clearError };
 
   return (

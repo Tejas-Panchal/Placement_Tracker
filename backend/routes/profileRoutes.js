@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
+const profileController = require('../controllers/profileController');
 const { 
   getMyProfile, 
   updateProfile, 
@@ -14,6 +15,7 @@ const {
 // Get and update my profile
 router.get('/me', authMiddleware, getMyProfile);
 router.put('/me', authMiddleware, updateProfile);
+
 
 // Job application endpoints
 router.post('/apply/:jobId', authMiddleware, applyToJob);
