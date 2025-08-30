@@ -70,7 +70,7 @@ const DashboardCard = ({ title, value, style }) => (
 const StudentDashboard = ({ user, data }) => (
   <div style={styles.container}>
     <div style={styles.header}>
-      <h1 style={styles.title}>Welcome, {user?.name || "Student"} 👋</h1>
+      <h1 style={styles.title}>Welcome, {data.user?.name || "Student"} 👋</h1>
     </div>
     <div style={styles.cardGrid}>
       <DashboardCard title="Applied Jobs" value={data?.appliedJobs?.length || 0} />
@@ -87,7 +87,7 @@ const StudentDashboard = ({ user, data }) => (
 const CompanyDashboard = ({ user, data }) => (
   <div style={styles.container}>
     <div style={styles.header}>
-      <h1 style={styles.title}>Welcome, {user?.name || "Company"} 👋</h1>
+      <h1 style={styles.title}>Welcome, {data.user?.name || "Company"} 👋</h1>
     </div>
     <div style={styles.cardGrid}>
       <DashboardCard title="Posted Jobs" value={data?.postedJobs?.length || 0} />
@@ -99,7 +99,7 @@ const CompanyDashboard = ({ user, data }) => (
 const TPODashboard = ({ user, data }) => (
   <div style={styles.container}>
     <div style={styles.header}>
-      <h1 style={styles.title}>Welcome, {user?.name || "TPO"} 👋</h1>
+      <h1 style={styles.title}>Welcome, {data.user?.name || "TPO"} 👋</h1>
     </div>
     <div style={styles.cardGrid}>
       <DashboardCard title="Registered Companies" value={data?.totalCompanies || 0} />
@@ -136,14 +136,14 @@ const DashboardPage = () => {
     tpo: TPODashboard
   };
 
-  const DashboardComponent = dashboardComponents[user.role];
+  const DashboardComponent = dashboardComponents[user.user.role];
   
   // If the role is invalid or doesn't exist, show an error or redirect
   if (!DashboardComponent) {
      return (
         <div style={{ color: 'red', border: '1px solid red', padding: '20px', margin: '20px' }}>
             <h2>Invalid User Role</h2>
-            <p>Current role: {user.role || 'No role assigned'}</p>
+            <p>Current role: {user.user.role || 'No role assigned'}</p>
             <p>Please contact the administrator to fix your role assignment.</p>
         </div>
       );

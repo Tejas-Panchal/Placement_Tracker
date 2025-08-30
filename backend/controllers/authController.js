@@ -40,7 +40,7 @@ exports.registerUser = async (req, res) => {
       await companyProfile.save();
     }
 
-    const payload =  { id: user.id, role: user.role } ;
+    const payload = { user: { id: user.id, role: user.role } };
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
@@ -70,7 +70,7 @@ exports.loginUser = async (req, res) => {
       return res.status(400).json({ msg: "Invalid Credentials" });
     }
 
-    const payload =  { id: user.id, role: user.role } ;
+    const payload = { user: { id: user.id, role: user.role } };
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
