@@ -50,8 +50,8 @@ export const JobsProvider = ({ children }) => {
     dispatch({ type: 'FETCH_REQUEST' });
     try {
       const [jobsRes, myAppsRes] = await Promise.all([
-        api.get('/jobs'), 
-        api.get('/applications/me'), 
+        api.get('/api/profile/jobs'), 
+        api.get('/api/profile/me'), 
       ]);
       dispatch({
         type: 'FETCH_SUCCESS',
@@ -70,7 +70,40 @@ export const JobsProvider = ({ children }) => {
     dispatch({ type: 'SET_FILTER', payload: { name, value } });
   }, []);
   
-  const contextValue = { ...state, setFilter, refetchData: fetchData };
+  const getFilteredJobs = useCallback(() => {
+    if (!Array.isArray(state.jobs)) return [];
+    
+    return state.jobs.filter(job => {
+      if (!job) return false;
+      
+      const matchesSearch = !state.filters.search || 
+        job.title?.toLowerCase().includes(state.filters.search.toLowerCase()) ||
+        job.company?.toLowerCase().includes(state.filters.search.toLowerCase()) ||
+        job.description?.toLowerCase().includes(state.filters.search.toLowerCase());
+
+      const matchesDomain = !state.filters.domain || 
+        job.domain?.toLowerCase() === state.filters.domain.toLowerCase();
+
+      const matchesLocation = !state.filters.location || 
+        job.location?.toLowerCase().includes(state.filters.location.toLowerCase());
+
+      const matchesPackage = !state.filters.packageRange || (() => {
+        if (!state.filters.packageRange.includes('-')) return true;
+        const [min, max] = state.filters.packageRange.split('-').map(Number);
+        const jobPackage = Number(job.package?.baseSalary) || 0;
+        return (!min || jobPackage >= min) && (!max || jobPackage <= max);
+      })();
+
+      return matchesSearch && matchesDomain && matchesLocation && matchesPackage;
+    });
+  }, [state.jobs, state.filters]);
+
+  const contextValue = { 
+    ...state, 
+    setFilter, 
+    refetchData: fetchData,
+    filteredJobs: getFilteredJobs()
+  };
 
   return (
     <JobsContext.Provider value={contextValue}>

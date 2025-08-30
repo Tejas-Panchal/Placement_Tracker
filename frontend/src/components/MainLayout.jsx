@@ -101,7 +101,7 @@ const MainLayout = () => {
         </div>
 
         <div style={userProfileStyle}>
-          <span>{user ? user.name : "John Doe"}</span>
+          <span>{user ? user.name : "User"}</span>
           <button onClick={handleLogout} style={logoutBtnStyle}>
             Logout
           </button>

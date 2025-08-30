@@ -83,15 +83,8 @@ const getStatusColor = (status) => {
 
 
 const JobsPage = () => {
-  const { jobs, myApplications, filters, setFilter, isLoading, error } =
+  const { filteredJobs, myApplications, filters, setFilter, isLoading, error } =
     useJobs();
-
-  const filteredJobs = jobs.filter((job) => {
-    return (
-      job.title.toLowerCase().includes(filters.search.toLowerCase()) &&
-      (filters.location ? job.location === filters.location : true)
-    );
-  });
 
   if (isLoading) return <div>Loading jobs...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
@@ -134,11 +127,12 @@ const JobsPage = () => {
         {filteredJobs.map((job) => (
           <div key={job._id} style={jobCardStyle}>
             <h3 style={jobCardTitleStyle}>
-              {job.title} - {job.companyName || "A Company"}
+              {job.title} - {job.company.companyName || "A Company"}
             </h3>
-            <p style={jobCardInfoStyle}>Bangalore | {job.package} LPA</p>
+            <p style={jobCardInfoStyle}>{job.location || 'Location N/A'} | {job.package?.baseSalary || 'Package N/A'} LPA</p>
+            <p style={jobCardInfoStyle}>Domain: {job.domain || 'N/A'}</p>
             <p style={jobCardInfoStyle}>
-              Eligibility: Min {job.eligibility?.cgpa || "N/A"} CGPA, CS/IT
+              Eligibility: Min {job.eligibilityCriteria?.minCGPA || "N/A"} CGPA, {job.eligibilityCriteria?.branches?.join(', ') || 'All Branches'}
             </p>
             <div style={jobCardButtonsStyle}>
               <button style={applyBtnStyle}>Apply</button>
@@ -158,22 +152,28 @@ const JobsPage = () => {
           </tr>
         </thead>
         <tbody>
-          {myApplications.map((app) => (
-            <tr key={app._id}>
-              <td style={tdStyle}>{app.job?.companyName || "A Company"}</td>
-              <td style={tdStyle}>{app.job?.title || "A Role"}</td>
-              <td style={tdStyle}>
-                <span
-                  style={{
-                    ...statusStyle,
-                    backgroundColor: getStatusColor(app.status),
-                  }}
-                >
-                  {app.status}
-                </span>
-              </td>
+          {Array.isArray(myApplications) && myApplications.length > 0 ? (
+            myApplications.map((app) => (
+              <tr key={app._id}>
+                <td style={tdStyle}>{app?.job?.company?.companyName || "A Company"}</td>
+                <td style={tdStyle}>{app?.job?.title || "A Role"}</td>
+                <td style={tdStyle}>
+                  <span
+                    style={{
+                      ...statusStyle,
+                      backgroundColor: getStatusColor(app.status),
+                    }}
+                  >
+                    {app.status || "Pending"}
+                  </span>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="3" style={tdStyle}>No applications found</td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
     </div>
