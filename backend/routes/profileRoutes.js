@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
 const { 
   getMyProfile, 
   updateProfile, 
   applyToJob, 
   getUpcomingExams, 
-  updateJobApplicationStatus 
+  updateJobApplicationStatus,
+  getAllAvailableJobs
 } = require('../controllers/profileController');
 
 // Get and update my profile
@@ -17,5 +19,8 @@ router.put('/me', authMiddleware, updateProfile);
 router.post('/apply/:jobId', authMiddleware, applyToJob);
 router.get('/exams', authMiddleware, getUpcomingExams);
 router.put('/application/:applicationId', authMiddleware, updateJobApplicationStatus);
+
+// Get all available jobs (student only)
+router.get('/jobs', [authMiddleware, roleMiddleware('student')], getAllAvailableJobs);
 
 module.exports = router;

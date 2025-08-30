@@ -1,5 +1,6 @@
 const StudentProfile = require('../models/StudentProfile');
 const CompanyProfile = require('../models/CompanyProfile');
+const Job = require('../models/Job');
 const mongoose = require('mongoose');
 
 // Get the logged-in user's profile
@@ -228,6 +229,138 @@ exports.updateJobApplicationStatus = async (req, res) => {
       });
 
     res.json(updatedProfile);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+// Get all available jobs for students
+exports.getAllAvailableJobs = async (req, res) => {
+  try {
+    if (req.user.role !== 'student') {
+      return res.status(403).json({ msg: 'Only students can view available jobs' });
+    }
+
+    const studentProfile = await StudentProfile.findOne({ user: req.user.id });
+    if (!studentProfile) {
+      return res.status(404).json({ msg: 'Student profile not found' });
+    }
+
+    const {
+      branch,
+      minCGPA,
+      graduationYear,
+      jobType,
+      location,
+      company,
+      minPackage,
+      sort,
+      limit = 20,
+      page = 1
+    } = req.query;
+
+    // Build the query
+    const query = {
+      status: 'Open',
+      applicationDeadline: { $gt: new Date() }
+    };
+
+    if (studentProfile.academicDetails) {
+      if (studentProfile.academicDetails.branch) {
+        query['eligibilityCriteria.branches'] = { 
+          $exists: true, 
+          $in: [studentProfile.academicDetails.branch]
+        };
+      }
+      
+      if (studentProfile.academicDetails.cgpa) {
+        query['eligibilityCriteria.minCGPA'] = { 
+          $exists: true,
+          $lte: studentProfile.academicDetails.cgpa 
+        };
+      }
+      
+      if (studentProfile.academicDetails.graduationYear) {
+        query['eligibilityCriteria.graduationYear'] = { 
+          $exists: true,
+          $eq: studentProfile.academicDetails.graduationYear 
+        };
+      }
+    }
+
+    if (branch) {
+      query['eligibilityCriteria.branches'] = { $in: branch.split(',') };
+    }
+    
+    if (minCGPA) {
+      query['eligibilityCriteria.minCGPA'] = { $lte: parseFloat(minCGPA) };
+    }
+    
+    if (graduationYear) {
+      query['eligibilityCriteria.graduationYear'] = parseInt(graduationYear);
+    }
+    
+    if (jobType) {
+      query.jobType = jobType;
+    }
+    
+    if (location) {
+      query.location = { $regex: new RegExp(location, 'i') };
+    }
+    
+    if (minPackage) {
+      query['package.totalCTC'] = { $gte: parseInt(minPackage) };
+    }
+    
+    if (company) {
+      const companyProfile = await CompanyProfile.findOne({ 
+        companyName: { $regex: new RegExp(company, 'i') } 
+      });
+      
+      if (companyProfile) {
+        query.company = companyProfile._id;
+      }
+    }
+
+    const appliedJobIds = studentProfile.appliedJobs.map(app => app.job.toString());
+    
+    if (appliedJobIds.length > 0) {
+      query._id = { $nin: appliedJobIds };
+    }
+
+    let sortOption = { createdAt: -1 };
+    
+    if (sort === 'deadline') {
+      sortOption = { applicationDeadline: 1 };
+    } else if (sort === 'package') {
+      sortOption = { 'package.totalCTC': -1 };
+    } else if (sort === 'company') {
+      sortOption = { company: 1 };
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const totalJobs = await Job.countDocuments(query);
+
+    const jobs = await Job.find(query)
+      .populate({
+        path: 'company',
+        select: 'companyName website industry location'
+      })
+      .sort(sortOption)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    res.json({
+      jobs,
+      pagination: {
+        totalJobs,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(totalJobs / parseInt(limit))
+      }
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
