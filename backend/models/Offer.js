@@ -18,13 +18,14 @@ const OfferSchema = new Schema({
     required: true
   },
   package: {
-    type: Number,
-    required: true
+    type: Number
   },
   tier: {
     type: String,
-    enum: ['Tier 1', 'Tier 2', 'Tier 3', 'Super Dream', 'Dream', 'Regular'],
-    required: true
+    enum: ['Tier 1', 'Tier 2', 'Tier 3', 'Super Dream', 'Dream', 'Regular']
+  },
+  applicationDate: {
+    type: Date
   },
   status: {
     type: String,
@@ -63,8 +64,8 @@ const OfferSchema = new Schema({
 
 // Pre-save middleware to set tier based on package if not explicitly provided
 OfferSchema.pre('save', function(next) {
-  // If tier is already set, don't override
-  if (this.tier) {
+  // If tier is already set or package is not set, don't try to determine tier
+  if (this.tier || !this.package) {
     return next();
   }
   

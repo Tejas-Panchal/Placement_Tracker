@@ -1,6 +1,8 @@
 import React from "react";
 import { useJobs } from "../context/JobsContext";
 import api from "../utils/api";
+import { useAuth } from "../context/AuthContext";
+import { useDashboard } from "../context/DashboardContext";
 
 const pageStyle = { fontFamily: "sans-serif", color: "#e0e0e0" };
 const sectionTitleStyle = {
@@ -69,12 +71,18 @@ const statusStyle = {
 
 const getStatusColor = (status) => {
   switch (status) {
+    case "Applied":
+      return "#e0e0e0";
     case "Shortlisted":
       return "#ffeb3b";
     case "Interview Scheduled":
+    case "In Progress":
       return "#ff9800";
     case "Offer Received":
+    case "Selected":
       return "#4caf50";
+    case "Rejected":
+      return "#ff5555";
     default:
       return "#e0e0e0";
   }
@@ -150,39 +158,58 @@ const modalSectionStyle = {
 };
 
 const JobsPage = () => {
-  const { filteredJobs, myApplications, filters, setFilter, isLoading, error, refetchData } =
-    useJobs();
+  const {
+    filteredJobs,
+    myApplications,
+    filters,
+    setFilter,
+    isLoading,
+    error,
+    refetchData,
+  } = useJobs();
+  const { dashboardData } = useDashboard();
+  // const { user } = useAuth();
   const [applyingJobId, setApplyingJobId] = React.useState(null);
-  const [applyStatus, setApplyStatus] = React.useState({ loading: false, error: null, success: false });
+  const [applyStatus, setApplyStatus] = React.useState({
+    loading: false,
+    error: null,
+    success: false,
+  });
   const [selectedJob, setSelectedJob] = React.useState(null); // State to track which job to show details for
   const [hoveredBreadcrumb, setHoveredBreadcrumb] = React.useState(null); // State to track hovered breadcrumb
 
   const handleApply = async (jobId) => {
     setApplyingJobId(jobId);
     setApplyStatus({ loading: true, error: null, success: false });
-    
+
     try {
-      await api.post(`/api/offers/apply/${jobId}`);
+      await api.post(`/api/profile/apply/${jobId}`);
       setApplyStatus({ loading: false, error: null, success: true });
-      
+
       // Refetch data to update the applications list
       setTimeout(() => {
         refetchData();
         setApplyStatus({ loading: false, error: null, success: false });
       }, 1500);
     } catch (err) {
-      setApplyStatus({ 
-        loading: false, 
-        error: err.response?.data?.message || 'Failed to apply for the job',
-        success: false 
+      setApplyStatus({
+        loading: false,
+        error: err.response?.data?.message || "Failed to apply for the job",
+        success: false,
       });
     }
   };
 
   // Check if user has already applied for a job
   const hasApplied = (jobId) => {
-    return Array.isArray(myApplications) && 
-      myApplications.some(app => app?.job?._id === jobId);
+    return (
+      Array.isArray(myApplications) &&
+      myApplications.some((app) => {
+        // Check if job is a string ID or an object with _id
+        const appJobId = typeof app.job === "string" ? app.job : app.job?._id;
+        return appJobId === jobId;
+      })
+    );
   };
 
   // Function to handle view details button click
@@ -201,23 +228,18 @@ const JobsPage = () => {
     // Close the current modal
     setSelectedJob(null);
     setHoveredBreadcrumb(null);
-    
-    // In a real app with routing, you would navigate to the specific path
-    // For example: navigate(`/${path}`);
-    // But for now, we'll just close the modal as navigation simulation
-    console.log(`Navigating to: ${path}`);
   };
 
   // Handle ESC key press to close the modal
   React.useEffect(() => {
     const handleEscKey = (event) => {
-      if (event.key === 'Escape' && selectedJob) {
+      if (event.key === "Escape" && selectedJob) {
         closeModal();
       }
     };
 
-    window.addEventListener('keydown', handleEscKey);
-    return () => window.removeEventListener('keydown', handleEscKey);
+    window.addEventListener("keydown", handleEscKey);
+    return () => window.removeEventListener("keydown", handleEscKey);
   }, [selectedJob]);
 
   if (isLoading) return <div>Loading jobs...</div>;
@@ -274,13 +296,15 @@ const JobsPage = () => {
       </div>
 
       {applyStatus.error && (
-        <div style={{ 
-          backgroundColor: "#ff5555", 
-          color: "white", 
-          padding: "10px 20px", 
-          borderRadius: "4px", 
-          marginBottom: "20px" 
-        }}>
+        <div
+          style={{
+            backgroundColor: "#ff5555",
+            color: "white",
+            padding: "10px 20px",
+            borderRadius: "4px",
+            marginBottom: "20px",
+          }}
+        >
           Error: {applyStatus.error}
         </div>
       )}
@@ -288,47 +312,63 @@ const JobsPage = () => {
       <div style={jobsGridStyle}>
         {filteredJobs.length > 0 ? (
           filteredJobs.map((job) => (
-          <div key={job._id} style={jobCardStyle}>
-            <h3 style={jobCardTitleStyle}>
-              {job.title} - {job.company.companyName || "A Company"}
-            </h3>
-            <p style={jobCardInfoStyle}>
-              {job.location || "Location N/A"} |{" "}
-              {job.package?.baseSalary || "Package N/A"} LPA
-            </p>
-            <p style={jobCardInfoStyle}>Domain: {job.domain || "N/A"}</p>
-            <p style={jobCardInfoStyle}>
-              Eligibility: Min {job.eligibilityCriteria?.minCGPA || "N/A"} CGPA,{" "}
-              {job.eligibilityCriteria?.branches?.join(", ") || "All Branches"}
-            </p>
-            <div style={jobCardButtonsStyle}>
-              {hasApplied(job._id) ? (
-                <button 
-                  style={{...applyBtnStyle, backgroundColor: "#4caf50", cursor: "default"}}
-                  disabled
+            <div key={job._id} style={jobCardStyle}>
+              <h3 style={jobCardTitleStyle}>
+                {job.title} - {job.company.companyName || "A Company"}
+              </h3>
+              <p style={jobCardInfoStyle}>
+                {job.location || "Location N/A"} |{" "}
+                {job.package?.baseSalary || "Package N/A"} LPA
+              </p>
+              <p style={jobCardInfoStyle}>Domain: {job.domain || "N/A"}</p>
+              <p style={jobCardInfoStyle}>
+                Eligibility: Min {job.eligibilityCriteria?.minCGPA || "N/A"}{" "}
+                CGPA,{" "}
+                {job.eligibilityCriteria?.branches?.join(", ") ||
+                  "All Branches"}
+              </p>
+              <div style={jobCardButtonsStyle}>
+                {hasApplied(job._id) ? (
+                  <button
+                    style={{
+                      ...applyBtnStyle,
+                      backgroundColor: "#4caf50",
+                      cursor: "default",
+                    }}
+                    disabled
+                  >
+                    Applied
+                  </button>
+                ) : (
+                  <button
+                    style={applyBtnStyle}
+                    onClick={() => handleApply(job._id)}
+                    disabled={applyingJobId === job._id && applyStatus.loading}
+                  >
+                    {applyingJobId === job._id && applyStatus.loading
+                      ? "Applying..."
+                      : applyingJobId === job._id && applyStatus.success
+                      ? "Applied!"
+                      : "Apply"}
+                  </button>
+                )}
+                <button
+                  style={detailsBtnStyle}
+                  onClick={() => handleViewDetails(job)}
                 >
-                  Applied
+                  View Details
                 </button>
-              ) : (
-                <button 
-                  style={applyBtnStyle}
-                  onClick={() => handleApply(job._id)}
-                  disabled={applyingJobId === job._id && applyStatus.loading}
-                >
-                  {applyingJobId === job._id && applyStatus.loading ? 'Applying...' : 
-                   applyingJobId === job._id && applyStatus.success ? 'Applied!' : 'Apply'}
-                </button>
-              )}
-              <button 
-                style={detailsBtnStyle} 
-                onClick={() => handleViewDetails(job)}
-              >
-                View Details
-              </button>
+              </div>
             </div>
-          </div>
-        ))) : (
-          <div style={{textAlign: 'center', gridColumn: '1 / -1', padding: '20px'}}>
+          ))
+        ) : (
+          <div
+            style={{
+              textAlign: "center",
+              gridColumn: "1 / -1",
+              padding: "20px",
+            }}
+          >
             <h3>No jobs match your filter criteria</h3>
             <p>Try adjusting your filters to see more results</p>
           </div>
@@ -341,6 +381,7 @@ const JobsPage = () => {
           <tr>
             <th style={thStyle}>COMPANY</th>
             <th style={thStyle}>ROLE</th>
+            <th style={thStyle}>APPLIED DATE</th>
             <th style={thStyle}>STATUS</th>
           </tr>
         </thead>
@@ -349,9 +390,15 @@ const JobsPage = () => {
             myApplications.map((app) => (
               <tr key={app._id}>
                 <td style={tdStyle}>
-                  {app?.job?.company?.companyName || "A Company"}
+                  {app?.job?.company?.companyName || "A Default Company Name"}
                 </td>
-                <td style={tdStyle}>{app?.job?.title || "A Role"}</td>
+                {console.log(dashboardData)}
+                <td style={tdStyle}>{app?.job?.title || "Software Engineer"}</td>
+                <td style={tdStyle}>
+                  {app?.appliedDate
+                    ? new Date(app.appliedDate).toLocaleDateString()
+                    : "N/A"}
+                </td>
                 <td style={tdStyle}>
                   <span
                     style={{
@@ -366,7 +413,7 @@ const JobsPage = () => {
             ))
           ) : (
             <tr>
-              <td colSpan="3" style={tdStyle}>
+              <td colSpan="4" style={tdStyle}>
                 No applications found
               </td>
             </tr>
@@ -377,80 +424,105 @@ const JobsPage = () => {
       {/* Job Details Modal */}
       {selectedJob && (
         <div style={modalOverlayStyle} onClick={closeModal}>
-          <div style={{...modalContentStyle, position: 'relative'}} onClick={e => e.stopPropagation()}>
-            <button style={modalCloseButtonStyle} onClick={closeModal}>&times;</button>
-            
+          <div
+            style={{ ...modalContentStyle, position: "relative" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button style={modalCloseButtonStyle} onClick={closeModal}>
+              &times;
+            </button>
+
             {/* Breadcrumbs */}
             <div style={breadcrumbsContainerStyle}>
-              <span 
+              <span
                 style={{
                   ...breadcrumbItemStyle,
-                  color: hoveredBreadcrumb === 'home' ? '#007bff' : '#aaa',
-                  textDecoration: hoveredBreadcrumb === 'home' ? 'underline' : 'none'
-                }} 
-                onClick={() => handleBreadcrumbClick('dashboard')}
-                onMouseEnter={() => setHoveredBreadcrumb('home')}
+                  color: hoveredBreadcrumb === "home" ? "#007bff" : "#aaa",
+                  textDecoration:
+                    hoveredBreadcrumb === "home" ? "underline" : "none",
+                }}
+                onClick={() => handleBreadcrumbClick("dashboard")}
+                onMouseEnter={() => setHoveredBreadcrumb("home")}
                 onMouseLeave={() => setHoveredBreadcrumb(null)}
               >
                 Home
               </span>
               <span style={breadcrumbSeparatorStyle}>&gt;</span>
-              <span 
+              <span
                 style={{
                   ...breadcrumbItemStyle,
-                  color: hoveredBreadcrumb === 'jobs' ? '#007bff' : '#aaa',
-                  textDecoration: hoveredBreadcrumb === 'jobs' ? 'underline' : 'none'
+                  color: hoveredBreadcrumb === "jobs" ? "#007bff" : "#aaa",
+                  textDecoration:
+                    hoveredBreadcrumb === "jobs" ? "underline" : "none",
                 }}
-                onClick={() => handleBreadcrumbClick('jobs')}
-                onMouseEnter={() => setHoveredBreadcrumb('jobs')}
+                onClick={() => handleBreadcrumbClick("jobs")}
+                onMouseEnter={() => setHoveredBreadcrumb("jobs")}
                 onMouseLeave={() => setHoveredBreadcrumb(null)}
               >
                 Jobs
               </span>
               <span style={breadcrumbSeparatorStyle}>&gt;</span>
               <span style={breadcrumbActiveStyle}>
-                {selectedJob.title}@{selectedJob.company?.companyName || "Company"}
+                {selectedJob.title}@
+                {selectedJob.company?.companyName || "Company"}
               </span>
             </div>
-            
+
             <div style={modalSectionStyle}>
-              <h2 style={{marginTop: 0, color: "#fff"}}>
+              <h2 style={{ marginTop: 0, color: "#fff" }}>
                 {selectedJob.title}
               </h2>
-              <p style={{fontSize: "1.2rem", color: "#aaa"}}>
+              <p style={{ fontSize: "1.2rem", color: "#aaa" }}>
                 {selectedJob.company?.companyName || "Company"}
               </p>
             </div>
-            
+
             <div style={modalSectionStyle}>
               <h3>Job Details</h3>
-              <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px"}}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "15px",
+                }}
+              >
                 <div>
-                  <p style={{margin: "8px 0", color: "#bbb"}}>
+                  <p style={{ margin: "8px 0", color: "#bbb" }}>
                     <strong>Location:</strong> {selectedJob.location || "N/A"}
                   </p>
-                  <p style={{margin: "8px 0", color: "#bbb"}}>
-                    <strong>Package:</strong> {selectedJob.package?.baseSalary || "N/A"} LPA
+                  <p style={{ margin: "8px 0", color: "#bbb" }}>
+                    <strong>Package:</strong>{" "}
+                    {selectedJob.package?.baseSalary || "N/A"} LPA
                   </p>
-                  <p style={{margin: "8px 0", color: "#bbb"}}>
+                  <p style={{ margin: "8px 0", color: "#bbb" }}>
                     <strong>Domain:</strong> {selectedJob.domain || "N/A"}
                   </p>
-                  <p style={{margin: "8px 0", color: "#bbb"}}>
-                    <strong>Job Type:</strong> {selectedJob.jobType || "Full Time"}
+                  <p style={{ margin: "8px 0", color: "#bbb" }}>
+                    <strong>Job Type:</strong>{" "}
+                    {selectedJob.jobType || "Full Time"}
                   </p>
                 </div>
                 <div>
-                  <p style={{margin: "8px 0", color: "#bbb"}}>
-                    <strong>Posted On:</strong> {new Date(selectedJob.createdAt).toLocaleDateString() || "N/A"}
+                  <p style={{ margin: "8px 0", color: "#bbb" }}>
+                    <strong>Posted On:</strong>{" "}
+                    {new Date(selectedJob.createdAt).toLocaleDateString() ||
+                      "N/A"}
                   </p>
-                  <p style={{margin: "8px 0", color: "#bbb"}}>
-                    <strong>Last Date to Apply:</strong> {selectedJob.lastDateToApply ? new Date(selectedJob.lastDateToApply).toLocaleDateString() : "Open"}
+                  <p style={{ margin: "8px 0", color: "#bbb" }}>
+                    <strong>Last Date to Apply:</strong>{" "}
+                    {selectedJob.lastDateToApply
+                      ? new Date(
+                          selectedJob.lastDateToApply
+                        ).toLocaleDateString()
+                      : "Open"}
                   </p>
-                  <p style={{margin: "8px 0", color: "#bbb"}}>
-                    <strong>Experience:</strong> {selectedJob.experienceRequired || "0-1 years"}
+                  <p style={{ margin: "8px 0", color: "#bbb" }}>
+                    <strong>Experience:</strong>{" "}
+                    {selectedJob.experienceRequired || "0-1 years"}
                   </p>
-                  <p style={{margin: "8px 0", color: "#bbb"}}>
-                    <strong>Vacancies:</strong> {selectedJob.vacancies || "Multiple"}
+                  <p style={{ margin: "8px 0", color: "#bbb" }}>
+                    <strong>Vacancies:</strong>{" "}
+                    {selectedJob.vacancies || "Multiple"}
                   </p>
                 </div>
               </div>
@@ -458,52 +530,78 @@ const JobsPage = () => {
 
             <div style={modalSectionStyle}>
               <h3>Description</h3>
-              <p style={{lineHeight: "1.6", color: "#bbb", whiteSpace: "pre-line"}}>
+              <p
+                style={{
+                  lineHeight: "1.6",
+                  color: "#bbb",
+                  whiteSpace: "pre-line",
+                }}
+              >
                 {selectedJob.description || "No description available."}
               </p>
             </div>
 
             <div style={modalSectionStyle}>
               <h3>Requirements</h3>
-              <ul style={{paddingLeft: "20px", color: "#bbb"}}>
-                {selectedJob.requirements ? 
-                  selectedJob.requirements.split('\n').map((req, i) => 
-                    <li key={i} style={{margin: "8px 0"}}>{req}</li>
-                  ) : 
+              <ul style={{ paddingLeft: "20px", color: "#bbb" }}>
+                {selectedJob.requirements ? (
+                  selectedJob.requirements.split("\n").map((req, i) => (
+                    <li key={i} style={{ margin: "8px 0" }}>
+                      {req}
+                    </li>
+                  ))
+                ) : (
                   <li>No specific requirements listed</li>
-                }
+                )}
               </ul>
             </div>
 
             <div style={modalSectionStyle}>
               <h3>Eligibility Criteria</h3>
-              <p style={{margin: "8px 0", color: "#bbb"}}>
-                <strong>Minimum CGPA:</strong> {selectedJob.eligibilityCriteria?.minCGPA || "N/A"}
+              <p style={{ margin: "8px 0", color: "#bbb" }}>
+                <strong>Minimum CGPA:</strong>{" "}
+                {selectedJob.eligibilityCriteria?.minCGPA || "N/A"}
               </p>
-              <p style={{margin: "8px 0", color: "#bbb"}}>
-                <strong>Eligible Branches:</strong> {selectedJob.eligibilityCriteria?.branches?.join(", ") || "All Branches"}
+              <p style={{ margin: "8px 0", color: "#bbb" }}>
+                <strong>Eligible Branches:</strong>{" "}
+                {selectedJob.eligibilityCriteria?.branches?.join(", ") ||
+                  "All Branches"}
               </p>
-              <p style={{margin: "8px 0", color: "#bbb"}}>
-                <strong>Additional Requirements:</strong> {selectedJob.eligibilityCriteria?.additionalRequirements || "None"}
+              <p style={{ margin: "8px 0", color: "#bbb" }}>
+                <strong>Additional Requirements:</strong>{" "}
+                {selectedJob.eligibilityCriteria?.additionalRequirements ||
+                  "None"}
               </p>
             </div>
 
-            <div style={{marginTop: "30px", textAlign: "center"}}>
+            <div style={{ marginTop: "30px", textAlign: "center" }}>
               {hasApplied(selectedJob._id) ? (
-                <button 
-                  style={{...applyBtnStyle, backgroundColor: "#4caf50", padding: "12px 30px", fontSize: "1.1rem", cursor: "default"}}
+                <button
+                  style={{
+                    ...applyBtnStyle,
+                    backgroundColor: "#4caf50",
+                    padding: "12px 30px",
+                    fontSize: "1.1rem",
+                    cursor: "default",
+                  }}
                   disabled
                 >
                   Already Applied
                 </button>
               ) : (
-                <button 
-                  style={{...applyBtnStyle, padding: "12px 30px", fontSize: "1.1rem"}}
+                <button
+                  style={{
+                    ...applyBtnStyle,
+                    padding: "12px 30px",
+                    fontSize: "1.1rem",
+                  }}
                   onClick={() => {
                     handleApply(selectedJob._id);
                     closeModal();
                   }}
-                  disabled={applyingJobId === selectedJob._id && applyStatus.loading}
+                  disabled={
+                    applyingJobId === selectedJob._id && applyStatus.loading
+                  }
                 >
                   Apply for this Position
                 </button>

@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { User, Student, Company, TPO } = require("../models/User");
-const Otp = require('../models/Otp');
+const Otp = require("../models/Otp");
 const StudentProfile = require("../models/StudentProfile");
 const CompanyProfile = require("../models/CompanyProfile");
 
@@ -11,7 +11,9 @@ exports.sendOtp = async (req, res) => {
     // A. Check if a user with this email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ msg: 'An account with this email already exists.' });
+      return res
+        .status(400)
+        .json({ msg: "An account with this email already exists." });
     }
 
     // B. Generate a random 6-digit OTP
@@ -22,7 +24,7 @@ exports.sendOtp = async (req, res) => {
 
     // D. Configure the email transporter using Nodemailer
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -33,22 +35,35 @@ exports.sendOtp = async (req, res) => {
     await transporter.sendMail({
       from: `"Placement Tracker" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Your Verification Code',
+      subject: "Your Verification Code",
       text: `Your One-Time Password (OTP) for Placement Tracker registration is: ${otp}\n\nThis code will expire in 5 minutes.`,
     });
 
-    res.status(200).json({ msg: 'OTP has been sent successfully to your email.' });
+    res
+      .status(200)
+      .json({ msg: "OTP has been sent successfully to your email." });
   } catch (err) {
-    console.error('Error in sendOtp:', err.message);
-    res.status(500).send('Server Error');
+    console.error("Error in sendOtp:", err.message);
+    res.status(500).send("Server Error");
   }
 };
 
-
 // User Registration
 exports.registerUser = async (req, res) => {
-  const { name, email, password, role, enrollmentNumber, branch, graduationYear, hrName, contactNumber, instituteName , otp } = req.body;
-  
+  const {
+    name,
+    email,
+    password,
+    role,
+    enrollmentNumber,
+    branch,
+    graduationYear,
+    hrName,
+    contactNumber,
+    instituteName,
+    otp,
+  } = req.body;
+
   try {
     const storedOtp = await Otp.findOne({ email });
     if (!storedOtp) {
@@ -64,13 +79,35 @@ exports.registerUser = async (req, res) => {
     }
 
     if (role === "student") {
-        user = new Student({ name, email, password, role, enrollmentNumber, branch, graduationYear });
+      user = new Student({
+        name,
+        email,
+        password,
+        role,
+        enrollmentNumber,
+        branch,
+        graduationYear,
+      });
     } else if (role === "company") {
-        user = new Company({ name, email, password, role, hrName, contactNumber });
+      user = new Company({
+        name,
+        email,
+        password,
+        role,
+        hrName,
+        contactNumber,
+      });
     } else if (role === "tpo") {
-        user = new TPO({ name, email, password, role, instituteName, contactNumber });
+      user = new TPO({
+        name,
+        email,
+        password,
+        role,
+        instituteName,
+        contactNumber,
+      });
     } else {
-        return res.status(400).json({ msg: "Invalid user role" });
+      return res.status(400).json({ msg: "Invalid user role" });
     }
 
     const salt = await bcrypt.genSalt(10);

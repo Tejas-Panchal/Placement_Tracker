@@ -59,9 +59,11 @@ export const JobsProvider = ({ children }) => {
       console.log('Profile data received:', myAppsRes.data);
       
       const jobsData = Array.isArray(jobsRes.data) ? jobsRes.data : (jobsRes.data?.jobs || []);
-      const applicationsData = Array.isArray(myAppsRes.data?.applications) ? 
-        myAppsRes.data.applications : [];
-        
+      
+      // Extract applied jobs from the student profile
+      const applicationsData = myAppsRes.data?.appliedJobs || [];
+      console.log("jobs", myAppsRes);
+
       dispatch({
         type: 'FETCH_SUCCESS',
         payload: { 

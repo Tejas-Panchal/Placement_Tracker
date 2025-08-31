@@ -223,6 +223,62 @@ exports.updateOfferStatus = async (req, res) => {
   }
 };
 
+// Apply for a job (student only)
+exports.applyForJob = async (req, res) => {
+  try {
+    const jobId = req.params.jobId;
+    
+    // Check if job exists
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+    
+    // Get student profile
+    const studentProfile = await StudentProfile.findOne({ user: req.user.id });
+    if (!studentProfile) {
+      return res.status(404).json({ message: 'Student profile not found' });
+    }
+    
+    // Check if student has already applied for this job
+    const existingOffer = await Offer.findOne({
+      job: jobId,
+      student: studentProfile._id,
+    });
+    
+    if (existingOffer) {
+      return res.status(400).json({ message: 'You have already applied for this job' });
+    }
+    
+    // Create new offer (application)
+    const newOffer = new Offer({
+      job: jobId,
+      student: studentProfile._id,
+      company: job.company,
+      status: 'Pending',
+      applicationDate: Date.now(),
+    });
+    
+    const savedOffer = await newOffer.save();
+    
+    // Add offer to student's offers list
+    if (!studentProfile.offers) {
+      studentProfile.offers = [];
+    }
+    studentProfile.offers.push(savedOffer._id);
+    await studentProfile.save();
+    
+    res.status(201).json({
+      message: 'Successfully applied for the job',
+      offer: savedOffer
+    });
+    
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
 // Get offer details by ID (all parties involved)
 exports.getOfferById = async (req, res) => {
   try {

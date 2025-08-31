@@ -78,26 +78,33 @@ const MainLayout = () => {
     <div style={mainLayoutStyle}>
       <nav style={navbarStyle}>
         <div style={navbarLogoStyle}>Placement Tracker Portal</div>
+        {console.log(user)}
 
         <div style={navbarLinksContainerStyle}>
           <NavLink to="/dashboard" style={getNavLinkStyle}>
             Dashboard
           </NavLink>
+          {user.user.role === "student" ? (
           <NavLink to="/jobs" style={getNavLinkStyle}>
             Jobs
           </NavLink>
-          <NavLink to="/practice" style={getNavLinkStyle}>
-            Practice & Exam
+          ) : (
+            ""
+          )}
+          {user.user.role === "student" ? (
+            <NavLink to="/practice" style={getNavLinkStyle}>
+              Practice & Exam
+            </NavLink>
+          ) : (
+            ""
+          )}
+          {user.user.role === "company" ? (
+          <NavLink to="/post-job" style={getNavLinkStyle}>
+            Post a Job
           </NavLink>
-          <NavLink to="/resumebuilder" style={getNavLinkStyle}>
-            Resume Builder
-          </NavLink>
-          <NavLink to="/history" style={getNavLinkStyle}>
-            History
-          </NavLink>
-          <NavLink to="/leaderboard" style={getNavLinkStyle}>
-            Leaderboard
-          </NavLink>
+          ) : (
+            ""
+          )}
         </div>
 
         <div style={userProfileStyle}>

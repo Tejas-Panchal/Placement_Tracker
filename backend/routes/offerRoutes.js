@@ -7,11 +7,15 @@ const {
   getCompanyOffers,
   getStudentOffers,
   updateOfferStatus,
-  getOfferById
+  getOfferById,
+  applyForJob
 } = require('../controllers/offerController');
 
 // Create a new offer (company only)
 router.post('/', [authMiddleware, roleMiddleware('company')], createOffer);
+
+// Apply for a job (student only)
+router.post('/apply/:jobId', [authMiddleware, roleMiddleware('student')], applyForJob);
 
 // Get all offers made by the company (company only)
 router.get('/company', [authMiddleware, roleMiddleware('company')], getCompanyOffers);
