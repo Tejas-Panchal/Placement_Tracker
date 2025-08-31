@@ -50,7 +50,7 @@ const labelStyle = {
 };
 
 const inputStyle = {
-  width: "100%",
+  width: "98%",
   padding: "10px",
   backgroundColor: "#2a2a2a",
   border: "1px solid #444",
